@@ -1,6 +1,8 @@
 #ifndef _LTM_H__
 #define _LTM_H__
 
+// TODO: constant are not constant and depends from the temperature!!!
+
 #include <eigen3/Eigen/Core>
 #include <stdint.h>
 #include <vector>
