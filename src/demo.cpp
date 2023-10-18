@@ -1,4 +1,4 @@
-#include "../include/lptm.h"
+#include "olptm/core"
 #include <eigen3/Eigen/Core>
 #include <fstream>
 #include <iostream>
