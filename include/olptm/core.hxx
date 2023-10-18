@@ -28,9 +28,10 @@ inline f64 __radiation_f(f64 T1, f64 T2, f64 alpha) {
 }
 
 struct body_t {
-  f64 inv_capacity; // capacity in  deg C / J # remember W = J / s
-  f64 T0;           // intial temperature in deg C
-  u32 id;           // index in the system
+  f64 (*inv_capacity)(f64 T); // capacity in  deg C / J # remember W = J / s
+  f64 inv_mass;               // body mass in 1 / kg
+  f64 T0;                     // intial temperature in deg C
+  u32 id;                     // index in the system
 };
 
 struct relation_t {
@@ -81,6 +82,11 @@ inline void evaluate(system_t &sys, f64 dt) {
   }
   // integrate results
   sys.temperatures += sys.heats.cwiseProduct(sys.inv_capacities) * dt;
+  // update thermal capacity
+  for (body_t b : sys.bodies) {
+    sys.inv_capacities[b.id] =
+        b.inv_mass * b.inv_capacity(sys.temperatures[b.id]);
+  }
 }
 
 /**
@@ -90,12 +96,15 @@ inline void evaluate(system_t &sys, f64 dt) {
  *  - mass: kg
  *  - specific_heat: J / (kg * C)
  **/
-inline body_t create(f64 mass, f64 specific_heat, f64 T0) {
-  return {1.0 / (mass * specific_heat), T0};
+inline body_t create(const f64 mass, f64 (*specific_heat)(f64 T),
+                     const f64 T0) {
+  return {specific_heat, 1.0 / mass, T0};
 }
 
 // create a body at constant temperature (infinite capcaity)
-inline body_t create(f64 T) { return {0, T}; }
+inline body_t create(f64 T) {
+  return {[](f64) -> f64 { return 0; }, 0, T};
+}
 
 // create a conduction heat exchange relationship between 2 bodies
 inline relation_t conduction(body_t b1, body_t b2, f64 Re1, f64 Re2) {
@@ -139,8 +148,14 @@ inline void initialize(system_t &sys) {
   sys.inv_capacities = Eigen::VectorX<f64>(sys.bodies.size());
   for (u32 i = 0; i < sys.bodies.size(); i++) {
     sys.temperatures[i] = sys.bodies[i].T0;
-    sys.inv_capacities[i] = sys.bodies[i].inv_capacity;
+    sys.inv_capacities[i] =
+        sys.bodies[i].inv_capacity(sys.bodies[i].T0) * sys.bodies[i].inv_mass;
   }
+}
+
+// check if syste is initialized
+inline bool is_initialized(system_t sys) {
+  return sys.bodies.size() == sys.temperatures.size();
 }
 } // namespace lptm
 
