@@ -1,4 +1,4 @@
-#include "olptm/core"
+#include "olptm/core.hxx"
 #include <eigen3/Eigen/Core>
 #include <fstream>
 #include <iostream>

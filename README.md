@@ -4,7 +4,7 @@ A simple, 1 header file, Lumped-parameter thermal model simulation library in c+
 
 ## Usage 
 
-Simply include `olptm/core` in your code.
+Simply include `olptm/core.hxx` in your code.
 
 ### Demo
 
