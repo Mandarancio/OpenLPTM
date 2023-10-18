@@ -1,4 +1,5 @@
 #include "olptm/core.hxx"
+#include "olptm/constants.h"
 #include <eigen3/Eigen/Core>
 #include <fstream>
 #include <iostream>
@@ -15,8 +16,8 @@ int main(int argc, char **argv) {
     return 1;
   }
   body_t heat_src = create(180);
-  body_t body_1 = create(0.05, 900, 23);
-  body_t body_2 = create(0.05, 450, 23);
+  body_t body_1 = create(0.05, SpecificHeat::Al, 23);
+  body_t body_2 = create(0.05, SpecificHeat::Cu, 23);
   body_t heat_snk = create(20);
 
   system_t system;
@@ -26,12 +27,12 @@ int main(int argc, char **argv) {
   add_body(system, body_2);
   add_body(system, heat_snk);
 
-  add_exchange(system, conduction(heat_src, body_1, Req(5.0 / 4.0, 400),
-                                  Req(5.0 / 4.0, 200)));
-  add_exchange(system, conduction(body_1, body_2, Req(5.0 / 4.0, 200),
-                                  Req(5.0 / 4.0, 60)));
-  add_exchange(system, conduction(body_2, heat_snk, Req(5.0 / 4.0, 60),
-                                  Req(5.0 / 4.0, 400)));
+  add_exchange(system, conduction(heat_src, body_1, Req(5.0 / 4.0, ThermalConductivity::Cu),
+                                  Req(5.0 / 4.0, ThermalConductivity::Al)));
+  add_exchange(system, conduction(body_1, body_2, Req(5.0 / 4.0, ThermalConductivity::Al),
+                                  Req(5.0 / 4.0, ThermalConductivity::Cu)));
+  add_exchange(system, conduction(body_2, heat_snk, Req(5.0 / 4.0, ThermalConductivity::Cu),
+                                  Req(5.0 / 4.0, ThermalConductivity::Cu)));
 
   initialize(system);
 
