@@ -98,7 +98,8 @@ inline void evaluate(system_t &sys, f64 dt) {
   sys.temperatures += sys.heats.cwiseProduct(sys.inv_capacities) * dt;
 }
 
-inline void evaluate(system_t &sys, const f64 DT, f64 &dt, f64 min_dt=0.001, f64 max_dt=1.0) {
+inline void evaluate(system_t &sys, const f64 DT, f64 &dt, f64 min_dt = 0.001,
+                     f64 max_dt = 1.0) {
   sys.heats.setZero();
   // compute all heat exchange
   for (relation_t r : sys.exchanges) {
@@ -108,11 +109,15 @@ inline void evaluate(system_t &sys, const f64 DT, f64 &dt, f64 min_dt=0.001, f64
     sys.heats[x] += heat;
     sys.heats[y] -= heat;
   }
-  Eigen::VectorX<f64>Q = sys.heats.cwiseProduct(sys.inv_capacities);   
+  Eigen::VectorX<f64> Q = sys.heats.cwiseProduct(sys.inv_capacities);
   f64 max_Q = Q.cwiseAbs().maxCoeff();
+  if (max_Q == 0) { // constant case
+    dt = max_dt;
+    return;
+  }
   f64 rdt = DT / max_Q;
-  dt = (rdt < min_dt ? min_dt : (rdt > max_dt ? max_dt : rdt)); 
-   // integrate results
+  dt = (rdt < min_dt ? min_dt : (rdt > max_dt ? max_dt : rdt));
+  // integrate results
   sys.temperatures += Q * dt;
 }
 
