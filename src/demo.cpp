@@ -7,7 +7,8 @@
 #include <fstream>
 #include <iostream>
 
-#define CC(K) [](f64 T) -> f64 { return 1.0 / K; }
+#define INV_CC(K) [](f64 T) -> f64 { return 1.0 / K; }
+#define CTC(K) [](f64 T) -> f64 { return  K; }
 
 // formatter to save vector to CSV
 const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision,
