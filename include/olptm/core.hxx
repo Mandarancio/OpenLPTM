@@ -84,7 +84,9 @@ inline void add_exchange(system_t &sys, relation_t rel) {
   sys.exchanges.push_back(rel);
 }
 
-inline void evaluate(system_t &sys, f64 dt) {
+// compute the overall thermal exchange of the system.
+inline void evaluate_exchanges(system_t &sys) {
+  // set heats to 0
   sys.heats.setZero();
   // compute all heat exchange
   for (relation_t r : sys.exchanges) {
@@ -94,28 +96,29 @@ inline void evaluate(system_t &sys, f64 dt) {
     sys.heats[x] += heat;
     sys.heats[y] -= heat;
   }
+}
+
+// evaluate the system with a constant time step
+inline void evaluate(system_t &sys, f64 dt) {
+  evaluate_exchanges(sys);
   // integrate results
   sys.temperatures += sys.heats.cwiseProduct(sys.inv_capacities) * dt;
 }
 
-inline void evaluate(system_t &sys, const f64 DT, f64 &dt, f64 min_dt = 0.001,
+/**
+ * Evaluate the system with a dynamic time step driven by the desire maximum
+ *change of temperature.
+ **/
+inline void evaluate(system_t &sys, const f64 dT, f64 &dt, f64 min_dt = 0.001,
                      f64 max_dt = 1.0) {
-  sys.heats.setZero();
-  // compute all heat exchange
-  for (relation_t r : sys.exchanges) {
-    u32 x = r.id1;
-    u32 y = r.id2;
-    f64 heat = r.fn(sys.temperatures[x], sys.temperatures[y], r.exc_k);
-    sys.heats[x] += heat;
-    sys.heats[y] -= heat;
-  }
+  evaluate_exchanges(sys);
   Eigen::VectorX<f64> Q = sys.heats.cwiseProduct(sys.inv_capacities);
   f64 max_Q = Q.cwiseAbs().maxCoeff();
   if (max_Q == 0) { // constant case
     dt = max_dt;
     return;
   }
-  f64 rdt = DT / max_Q;
+  f64 rdt = dT / max_Q;
   dt = (rdt < min_dt ? min_dt : (rdt > max_dt ? max_dt : rdt));
   // integrate results
   sys.temperatures += Q * dt;

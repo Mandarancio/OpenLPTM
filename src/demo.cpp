@@ -53,11 +53,11 @@ int main(int argc, char **argv) {
                                   Req(5.0 / 4.0, ThermalConductivity::Cu)));
 
   f64 dt = 0.001;         // s
-  const f64 sim_T = 10.0; // s
+  const f64 sim_time = 10.0; // s
   f64 time = 0;           // s
   std::ofstream file(argv[argc - 1]);
-  file << "0.0, " << system.temperatures.format(CSVFormat) << "\n";
-  while (time < sim_T) {
+  file << time << ", " << system.temperatures.format(CSVFormat) << "\n";
+  while (time < sim_time) {
     if (static_dt) {
       evaluate(system, dt);
     } else {
