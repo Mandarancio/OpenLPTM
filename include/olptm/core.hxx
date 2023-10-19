@@ -18,7 +18,7 @@ typedef uint64_t u64;
 typedef int32_t i32;
 
 // variable value depandant on temperature
-typedef f64 (*fnT_t)(f64 T);
+typedef std::function<f64(f64 T)> fnT_t;
 
 // Stefan-Boltzman constant
 static const f64 SIGMA = 5.6704e-8;
@@ -40,9 +40,8 @@ struct body_t {
 };
 
 struct exchange_t {
-  u32 id1;   // body 1 index
-  u32 id2;   // body 2 index
-  f64 exc_k; // exchange constant
+  body_t *body_1; // body 1 index
+  body_t *body_2; // body 2 index
   /**
    * Function used to compute heat exchange.
    * Parameters:
@@ -54,7 +53,7 @@ struct exchange_t {
    * --------
    * Heat exchanged in W
    **/
-  f64 (*fn)(f64 T1, f64 T2, f64 exc_k);
+  std::function<f64(f64 T1, f64 T2, body_t *b1, body_t *b2)> fn;
 };
 
 // Simple system descriptor
@@ -95,9 +94,10 @@ inline void evaluate_exchanges(system_t &sys) {
   sys.heats.setZero();
   // compute all heat exchange
   for (exchange_t r : sys.exchanges) {
-    u32 x = r.id1;
-    u32 y = r.id2;
-    f64 heat = r.fn(sys.temperatures[x], sys.temperatures[y], r.exc_k);
+    u32 x = r.body_1->id;
+    u32 y = r.body_2->id;
+    f64 heat =
+        r.fn(sys.temperatures[x], sys.temperatures[y], r.body_1, r.body_2);
     sys.heats[x] += heat;
     sys.heats[y] -= heat;
   }
@@ -147,7 +147,7 @@ inline void update_parameters(system_t &sys) {
  *  - specific_heat: J / (kg * C)
  **/
 inline body_t body(const f64 mass, fnT_t specific_heat, fnT_t conductivity,
-                     const f64 T0) {
+                   const f64 T0) {
   return {specific_heat, conductivity, 1.0 / mass, T0, conductivity(T0)};
 }
 
@@ -157,39 +157,32 @@ inline body_t constant_temperature_body(f64 T, fnT_t conductivity) {
 }
 
 // create a conduction heat exchange relationship between 2 bodies
-inline exchange_t conduction(body_t b1, body_t b2, f64 Re1, f64 Re2) {
-  f64 Req = Re1 + Re2;
+inline exchange_t conduction(body_t &b1, body_t &b2, f64 surf_area_b1,
+                             f64 surf_area_b2) {
   return {
-      b1.id,
-      b2.id,
-      Req,
-      __conduction_f,
+      &b1,
+      &b2,
+      [surf_area_b1, surf_area_b2](f64 T1, f64 T2, body_t *b1,
+                                   body_t *b2) -> f64 {
+        return (T2 - T1) / (surf_area_b1 / b1->thermal_conductivy +
+                            surf_area_b2 / b2->thermal_conductivy);
+      },
   };
 }
 
 // create a radiation heat exchange relationship between 2 bodies
-inline exchange_t radiation(body_t b1, body_t b2, f64 correction_factor,
+inline exchange_t radiation(body_t &b1, body_t &b2, f64 correction_factor,
                             f64 view_factor) {
-  f64 alpha = correction_factor * view_factor * SIGMA;
+  const f64 alpha = correction_factor * view_factor * SIGMA;
   return {
-      b1.id,
-      b2.id,
-      alpha,
-      __radiation_f,
+      &b1,
+      &b2,
+      [alpha](f64 T1, f64 T2, body_t *b1, body_t *b2) -> f64 {
+        return alpha * (_P4_(T2) - _P4_(T1));
+      },
   };
 }
 
-/**
- * Equivalent resistance for a surface contact
- * Units:
- * ------
- * - surface_area: m
- * - thermal_conductivity: W / (m * deg C)
- * - return: W / deg C
- **/
-inline f64 Req(f64 surface_area, f64 thermal_conductity) {
-  return surface_area / thermal_conductity;
-}
 
 } // namespace lptm
 

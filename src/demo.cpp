@@ -49,15 +49,9 @@ int main(int argc, char **argv) {
   add_body(system, body_2);
   add_body(system, heat_snk);
 
-  add_exchange(system, conduction(heat_src, body_1,
-                                  Req(5.0 / 4.0, heat_src.thermal_conductivy),
-                                  Req(5.0 / 4.0, body_1.thermal_conductivy)));
-  add_exchange(system, conduction(body_1, body_2,
-                                  Req(5.0 / 4.0, body_1.thermal_conductivy),
-                                  Req(5.0 / 4.0, body_2.thermal_conductivy)));
-  add_exchange(system, conduction(body_2, heat_snk,
-                                  Req(5.0 / 4.0, body_1.thermal_conductivy),
-                                  Req(5.0 / 4.0, heat_snk.thermal_conductivy)));
+  add_exchange(system, conduction(heat_src, body_1, 5.0 / 4.0, 5.0 / 4.0));
+  add_exchange(system, conduction(body_1, body_2, 5.0 / 4.0, 5.0 / 4.0));
+  add_exchange(system, conduction(body_2, heat_snk, 5.0 / 4.0, 5.0 / 4.0));
 
   f64 dt = 0.001;            // s
   const f64 sim_time = 10.0; // s
