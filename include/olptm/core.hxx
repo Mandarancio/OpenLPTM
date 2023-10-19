@@ -1,8 +1,6 @@
 #ifndef _LTM_H__
 #define _LTM_H__
 
-// TODO: constant are not constant and depends from the temperature!!!
-
 #include <eigen3/Eigen/Core>
 #include <ratio>
 #include <stdint.h>
@@ -16,7 +14,11 @@ namespace lptm {
 typedef float f32;
 typedef double f64;
 typedef uint32_t u32;
+typedef uint64_t u64;
 typedef int32_t i32;
+
+// variable value depandant on temperature
+typedef f64 (*fnT_t)(f64 T);
 
 // Stefan-Boltzman constant
 static const f64 SIGMA = 5.6704e-8;
@@ -29,13 +31,15 @@ inline f64 __radiation_f(f64 T1, f64 T2, f64 alpha) {
 }
 
 struct body_t {
-  f64 (*inv_capacity)(f64 T); // capacity in  deg C / J # remember W = J / s
-  f64 inv_mass;               // body mass in 1 / kg
-  f64 T0;                     // intial temperature in deg C
-  u32 id;                     // index in the system
+  fnT_t inv_specific_heat_fn;    // capacity in  deg C / J # remember W = J / s
+  fnT_t thermal_conductivity_fn; // thermal conductivy in function of T
+  f64 inv_mass;                  // body mass in 1 / kg
+  f64 T0;                        // intial temperature in deg C
+  f64 thermal_conductivy;        // current thermal conductivy
+  u32 id;                        // index in the system
 };
 
-struct relation_t {
+struct exchange_t {
   u32 id1;   // body 1 index
   u32 id2;   // body 2 index
   f64 exc_k; // exchange constant
@@ -59,7 +63,7 @@ struct system_t {
   Eigen::VectorX<f64> heats;          // unit W
   Eigen::VectorX<f64> inv_capacities; // unit deg C / J
   std::vector<body_t> bodies;         // list of bodies
-  std::vector<relation_t> exchanges;  // list of heat exchange relations
+  std::vector<exchange_t> exchanges;  // list of heat exchange relations
 };
 
 template <typename T> inline void insert(Eigen::VectorX<T> &v, T val) {
@@ -77,10 +81,11 @@ inline void add_body(system_t &sys, body_t &body) {
   sys.bodies.push_back(body);
   insert<f64>(sys.temperatures, body.T0);
   insert<f64>(sys.heats, 0);
-  insert<f64>(sys.inv_capacities, body.inv_capacity(body.T0) * body.inv_mass);
+  insert<f64>(sys.inv_capacities,
+              body.inv_specific_heat_fn(body.T0) * body.inv_mass);
 }
 
-inline void add_exchange(system_t &sys, relation_t rel) {
+inline void add_exchange(system_t &sys, exchange_t rel) {
   sys.exchanges.push_back(rel);
 }
 
@@ -89,7 +94,7 @@ inline void evaluate_exchanges(system_t &sys) {
   // set heats to 0
   sys.heats.setZero();
   // compute all heat exchange
-  for (relation_t r : sys.exchanges) {
+  for (exchange_t r : sys.exchanges) {
     u32 x = r.id1;
     u32 y = r.id2;
     f64 heat = r.fn(sys.temperatures[x], sys.temperatures[y], r.exc_k);
@@ -125,10 +130,12 @@ inline void evaluate(system_t &sys, const f64 dT, f64 &dt, f64 min_dt = 0.001,
 }
 
 inline void update_parameters(system_t &sys) {
-  // update thermal capacity
   for (body_t b : sys.bodies) {
+    // update thermal capacity
     sys.inv_capacities[b.id] =
-        b.inv_mass * b.inv_capacity(sys.temperatures[b.id]);
+        b.inv_mass * b.inv_specific_heat_fn(sys.temperatures[b.id]);
+    // TODO update thermal conductivity
+    b.thermal_conductivy = b.thermal_conductivity_fn(sys.temperatures[b.id]);
   }
 }
 
@@ -139,18 +146,18 @@ inline void update_parameters(system_t &sys) {
  *  - mass: kg
  *  - specific_heat: J / (kg * C)
  **/
-inline body_t create(const f64 mass, f64 (*specific_heat)(f64 T),
+inline body_t body(const f64 mass, fnT_t specific_heat, fnT_t conductivity,
                      const f64 T0) {
-  return {specific_heat, 1.0 / mass, T0};
+  return {specific_heat, conductivity, 1.0 / mass, T0, conductivity(T0)};
 }
 
 // create a body at constant temperature (infinite capcaity)
-inline body_t create(f64 T) {
-  return {[](f64) -> f64 { return 0; }, 0, T};
+inline body_t constant_temperature_body(f64 T, fnT_t conductivity) {
+  return {[](f64) -> f64 { return 0; }, conductivity, 0, T, conductivity(T)};
 }
 
 // create a conduction heat exchange relationship between 2 bodies
-inline relation_t conduction(body_t b1, body_t b2, f64 Re1, f64 Re2) {
+inline exchange_t conduction(body_t b1, body_t b2, f64 Re1, f64 Re2) {
   f64 Req = Re1 + Re2;
   return {
       b1.id,
@@ -161,7 +168,7 @@ inline relation_t conduction(body_t b1, body_t b2, f64 Re1, f64 Re2) {
 }
 
 // create a radiation heat exchange relationship between 2 bodies
-inline relation_t radiation(body_t b1, body_t b2, f64 correction_factor,
+inline exchange_t radiation(body_t b1, body_t b2, f64 correction_factor,
                             f64 view_factor) {
   f64 alpha = correction_factor * view_factor * SIGMA;
   return {
