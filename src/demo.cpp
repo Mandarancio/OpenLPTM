@@ -17,20 +17,20 @@ int main(int argc, char **argv) {
     std::cout << "Missing CSV file path\n";
     return 1;
   }
-  
+
   bool static_dt = true;
   if (argc == 3) {
     if (strcmp(argv[1], "--dynamic") == 0)
       static_dt = false;
-    else if (strcmp(argv[1], "--static") == 0) 
+    else if (strcmp(argv[1], "--static") == 0)
       static_dt = true;
     else {
       std::cout << "mode can be only `--dynamic` or `--static`\n";
       return 1;
     }
   }
- 
-   body_t heat_src = create(180);
+
+  body_t heat_src = create(180);
   body_t body_1 = create(0.05, CC(SpecificHeat::Al), 23);
   body_t body_2 = create(0.05, CC(SpecificHeat::Cu), 23);
   body_t heat_snk = create(20);
@@ -52,18 +52,18 @@ int main(int argc, char **argv) {
                                   Req(5.0 / 4.0, ThermalConductivity::Cu),
                                   Req(5.0 / 4.0, ThermalConductivity::Cu)));
 
-  f64 dt = 0.001; // s
+  f64 dt = 0.001;         // s
   const f64 sim_T = 10.0; // s
-  f64 time = 0; // s
+  f64 time = 0;           // s
   std::ofstream file(argv[argc - 1]);
   file << "0.0, " << system.temperatures.format(CSVFormat) << "\n";
-  while (time < sim_T ) {
-    if (static_dt){
+  while (time < sim_T) {
+    if (static_dt) {
       evaluate(system, dt);
     } else {
       evaluate(system, 0.01, dt, 0.0001, 1.0);
     }
-    time += dt ;
+    time += dt;
     file << time << ", " << system.temperatures.format(CSVFormat) << "\n";
   }
   std::cout << "Temperature heat source: " << system.temperatures[heat_src.id]
