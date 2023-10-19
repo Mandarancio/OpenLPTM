@@ -4,6 +4,7 @@
 // TODO: constant are not constant and depends from the temperature!!!
 
 #include <eigen3/Eigen/Core>
+#include <ratio>
 #include <stdint.h>
 #include <vector>
 
@@ -61,12 +62,22 @@ struct system_t {
   std::vector<relation_t> exchanges;  // list of heat exchange relations
 };
 
+template <typename T> inline void insert(Eigen::VectorX<T> &v, T val) {
+  u32 size = v.size();
+  Eigen::VectorX<T> tmp = v;
+  v.resize(size + 1);
+  v.head(size) = tmp;
+  v[size] = val;
+}
+
 inline void add_body(system_t &sys, body_t &body) {
-  body.id = sys.bodies.size();
+  u32 id = sys.bodies.size();
+  body.id = id;
+
   sys.bodies.push_back(body);
-  sys.heats << 0.0;
-  sys.temperatures << body.T0;
-  sys.inv_capacities << body.inv_capacity(body.T0) * body.inv_mass;
+  insert<f64>(sys.temperatures, body.T0);
+  insert<f64>(sys.heats, 0);
+  insert<f64>(sys.inv_capacities, body.inv_capacity(body.T0) * body.inv_mass);
 }
 
 inline void add_exchange(system_t &sys, relation_t rel) {
