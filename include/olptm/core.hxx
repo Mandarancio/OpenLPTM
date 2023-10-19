@@ -152,8 +152,11 @@ inline body_t body(const f64 mass, fnT_t specific_heat, fnT_t conductivity,
 }
 
 // create a body at constant temperature (infinite capcaity)
-inline body_t constant_temperature_body(f64 T, fnT_t conductivity) {
-  return {[](f64) -> f64 { return 0; }, conductivity, 0, T, conductivity(T)};
+inline body_t constant_temperature_body(f64 T, f64 conductivity) {
+  return {[](f64) -> f64 { return 0; },
+          [conductivity](f64) -> f64 { return 1.0 / conductivity; 
+    }, 0, T,
+          conductivity};
 }
 
 // create a conduction heat exchange relationship between 2 bodies
@@ -182,7 +185,6 @@ inline exchange_t radiation(body_t &b1, body_t &b2, f64 correction_factor,
       },
   };
 }
-
 
 } // namespace lptm
 

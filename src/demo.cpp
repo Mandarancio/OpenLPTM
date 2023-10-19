@@ -34,13 +34,12 @@ int main(int argc, char **argv) {
     }
   }
 
-  body_t heat_src =
-      constant_temperature_body(180, CTC(ThermalConductivity::Cu));
+  body_t heat_src = constant_temperature_body(180, ThermalConductivity::Cu);
   body_t body_1 =
       body(0.05, INV_CC(SpecificHeat::Al), CTC(ThermalConductivity::Al), 23);
   body_t body_2 =
       body(0.05, INV_CC(SpecificHeat::Cu), CTC(ThermalConductivity::Cu), 23);
-  body_t heat_snk = constant_temperature_body(20, CTC(ThermalConductivity::Cu));
+  body_t heat_snk = constant_temperature_body(20, ThermalConductivity::Cu);
 
   system_t system;
 
