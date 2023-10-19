@@ -61,9 +61,9 @@ int main(int argc, char **argv) {
     if (static_dt){
       evaluate(system, dt);
     } else {
-      evaluate(system, 1.0, dt);
+      evaluate(system, 0.01, dt, 0.0001, 1.0);
     }
-    time += dt * 10;
+    time += dt ;
     file << time << ", " << system.temperatures.format(CSVFormat) << "\n";
   }
   std::cout << "Temperature heat source: " << system.temperatures[heat_src.id]
