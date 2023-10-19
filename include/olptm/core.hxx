@@ -154,8 +154,7 @@ inline body_t body(const f64 mass, fnT_t specific_heat, fnT_t conductivity,
 // create a body at constant temperature (infinite capcaity)
 inline body_t constant_temperature_body(f64 T, f64 conductivity) {
   return {[](f64) -> f64 { return 0; },
-          [conductivity](f64) -> f64 { return 1.0 / conductivity; 
-    }, 0, T,
+          [conductivity](f64) -> f64 { return 1.0 / conductivity; }, 0, T,
           conductivity};
 }
 
