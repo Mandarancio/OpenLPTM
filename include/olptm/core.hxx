@@ -58,22 +58,25 @@ struct system_t {
   Eigen::VectorX<f64> heats;          // unit W
   Eigen::VectorX<f64> inv_capacities; // unit deg C / J
   std::vector<body_t> bodies;         // list of bodies
-  std::vector<relation_t> relations;  // list of heat exchange relations
+  std::vector<relation_t> exchanges;  // list of heat exchange relations
 };
 
 inline void add_body(system_t &sys, body_t &body) {
   body.id = sys.bodies.size();
   sys.bodies.push_back(body);
+  sys.heats << 0.0;
+  sys.temperatures << body.T0;
+  sys.inv_capacities << body.inv_capacity(body.T0) * body.inv_mass;
 }
 
 inline void add_exchange(system_t &sys, relation_t rel) {
-  sys.relations.push_back(rel);
+  sys.exchanges.push_back(rel);
 }
 
 inline void evaluate(system_t &sys, f64 dt) {
   sys.heats.setZero();
   // compute all heat exchange
-  for (relation_t r : sys.relations) {
+  for (relation_t r : sys.exchanges) {
     u32 x = r.id1;
     u32 y = r.id2;
     f64 heat = r.fn(sys.temperatures[x], sys.temperatures[y], r.exc_k);
@@ -82,11 +85,13 @@ inline void evaluate(system_t &sys, f64 dt) {
   }
   // integrate results
   sys.temperatures += sys.heats.cwiseProduct(sys.inv_capacities) * dt;
+#if DYNAMIC_CAPACITIES
   // update thermal capacity
   for (body_t b : sys.bodies) {
     sys.inv_capacities[b.id] =
         b.inv_mass * b.inv_capacity(sys.temperatures[b.id]);
   }
+#endif
 }
 
 /**
@@ -141,22 +146,6 @@ inline f64 Req(f64 surface_area, f64 thermal_conductity) {
   return surface_area / thermal_conductity;
 }
 
-// initialize system
-inline void initialize(system_t &sys) {
-  sys.heats = Eigen::VectorX<f64>(sys.bodies.size());
-  sys.temperatures = Eigen::VectorX<f64>(sys.bodies.size());
-  sys.inv_capacities = Eigen::VectorX<f64>(sys.bodies.size());
-  for (u32 i = 0; i < sys.bodies.size(); i++) {
-    sys.temperatures[i] = sys.bodies[i].T0;
-    sys.inv_capacities[i] =
-        sys.bodies[i].inv_capacity(sys.bodies[i].T0) * sys.bodies[i].inv_mass;
-  }
-}
-
-// check if syste is initialized
-inline bool is_initialized(system_t sys) {
-  return sys.bodies.size() == sys.temperatures.size();
-}
 } // namespace lptm
 
 #endif

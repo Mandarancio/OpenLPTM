@@ -39,8 +39,6 @@ int main(int argc, char **argv) {
                                   Req(5.0 / 4.0, ThermalConductivity::Cu),
                                   Req(5.0 / 4.0, ThermalConductivity::Cu)));
 
-  initialize(system);
-
   const f64 dt = 0.001;
   const u32 N = 10000;
   std::ofstream file(argv[1]);
