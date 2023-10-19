@@ -96,13 +96,32 @@ inline void evaluate(system_t &sys, f64 dt) {
   }
   // integrate results
   sys.temperatures += sys.heats.cwiseProduct(sys.inv_capacities) * dt;
-#if DYNAMIC_CAPACITIES
+}
+
+inline void evaluate(system_t &sys, const f64 DT, f64 &dt, f64 min_dt=0.001, f64 max_dt=1.0) {
+  sys.heats.setZero();
+  // compute all heat exchange
+  for (relation_t r : sys.exchanges) {
+    u32 x = r.id1;
+    u32 y = r.id2;
+    f64 heat = r.fn(sys.temperatures[x], sys.temperatures[y], r.exc_k);
+    sys.heats[x] += heat;
+    sys.heats[y] -= heat;
+  }
+  Eigen::VectorX<f64>Q = sys.heats.cwiseProduct(sys.inv_capacities);   
+  f64 max_Q = Q.cwiseAbs().maxCoeff();
+  f64 rdt = DT / max_Q;
+  dt = (rdt < min_dt ? min_dt : (rdt > max_dt ? max_dt : rdt)); 
+   // integrate results
+  sys.temperatures += Q * dt;
+}
+
+inline void update_parameters(system_t &sys) {
   // update thermal capacity
   for (body_t b : sys.bodies) {
     sys.inv_capacities[b.id] =
         b.inv_mass * b.inv_capacity(sys.temperatures[b.id]);
   }
-#endif
 }
 
 /**

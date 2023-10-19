@@ -13,11 +13,24 @@ const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision,
 using namespace lptm;
 
 int main(int argc, char **argv) {
-  if (argc != 2) {
+  if (argc < 2) {
     std::cout << "Missing CSV file path\n";
     return 1;
   }
-  body_t heat_src = create(180);
+  
+  bool static_dt = true;
+  if (argc == 3) {
+    if (strcmp(argv[1], "--dynamic") == 0)
+      static_dt = false;
+    else if (strcmp(argv[1], "--static") == 0) 
+      static_dt = true;
+    else {
+      std::cout << "mode can be only `--dynamic` or `--static`\n";
+      return 1;
+    }
+  }
+ 
+   body_t heat_src = create(180);
   body_t body_1 = create(0.05, CC(SpecificHeat::Al), 23);
   body_t body_2 = create(0.05, CC(SpecificHeat::Cu), 23);
   body_t heat_snk = create(20);
@@ -39,14 +52,19 @@ int main(int argc, char **argv) {
                                   Req(5.0 / 4.0, ThermalConductivity::Cu),
                                   Req(5.0 / 4.0, ThermalConductivity::Cu)));
 
-  const f64 dt = 0.001;
-  const u32 N = 10000;
-  std::ofstream file(argv[1]);
-  file << "#dt: " << dt << "\n";
-  file << system.temperatures.format(CSVFormat) << "\n";
-  for (u32 i = 0; i < N; i++) {
-    evaluate(system, dt);
-    file << system.temperatures.format(CSVFormat) << "\n";
+  f64 dt = 0.001; // s
+  const f64 sim_T = 10.0; // s
+  f64 time = 0; // s
+  std::ofstream file(argv[argc - 1]);
+  file << "0.0, " << system.temperatures.format(CSVFormat) << "\n";
+  while (time < sim_T ) {
+    if (static_dt){
+      evaluate(system, dt);
+    } else {
+      evaluate(system, 1.0, dt);
+    }
+    time += dt * 10;
+    file << time << ", " << system.temperatures.format(CSVFormat) << "\n";
   }
   std::cout << "Temperature heat source: " << system.temperatures[heat_src.id]
             << std::endl;
