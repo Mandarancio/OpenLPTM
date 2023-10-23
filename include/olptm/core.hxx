@@ -23,13 +23,6 @@ typedef std::function<f64(f64 T)> fnT_t;
 // Stefan-Boltzman constant
 static const f64 SIGMA = 5.6704e-8;
 
-// simple conduction function
-inline f64 __conduction_f(f64 T1, f64 T2, f64 R) { return (T2 - T1) / R; }
-// simple radiation function
-inline f64 __radiation_f(f64 T1, f64 T2, f64 alpha) {
-  return alpha * (_P4_(T2) - _P4_(T1));
-}
-
 struct body_t {
   fnT_t inv_specific_heat_fn;    // capacity in  deg C / J # remember W = J / s
   fnT_t thermal_conductivity_fn; // thermal conductivy in function of T
