@@ -133,15 +133,31 @@ inline void update_parameters(system_t &sys) {
 }
 
 /**
- * Create a body with a constant specific heat
+ * Create a dynamic body
  * Unit:
  * -----
  *  - mass: kg
- *  - specific_heat: J / (kg * C)
+ *  - specific_heat: function of temperature J / (kg * C)
+ *  - conductivity: function of temperature
+ *  - T0: inital temperature (C/K)
  **/
 inline body_t body(const f64 mass, fnT_t specific_heat, fnT_t conductivity,
                    const f64 T0) {
   return {specific_heat, conductivity, 1.0 / mass, T0, conductivity(T0)};
+}
+
+/**
+ * Create a simple body with constant physical caracteristics.
+ */
+inline body_t body(const f64 mass, const f64 specific_heat,
+                   const f64 conductiviy, const f64 T0) {
+  return {
+      [specific_heat](f64) -> f64 { return 1 / specific_heat; },
+      [conductiviy](f64) -> f64 { return conductiviy; },
+      1.0 / mass,
+      T0,
+      conductiviy,
+  };
 }
 
 // create a body at constant temperature (infinite capcaity)
