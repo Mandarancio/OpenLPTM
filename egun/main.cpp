@@ -11,14 +11,14 @@ const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision,
 
 using namespace lptm;
 
-exchange_t thermoionic_cooling(body_t &emitter, f64 &Ik) {
-  return [&emitter, &Ik](system_t &sys) -> void {
-    // formula to compute dE from Ik and emitter temeperature
+exchange_t thermoionic_cooling(body_t emitter, f64 &Ik) {
+  return [emitter, &Ik](system_t &sys) -> void {
+      // formula to compute dE from Ik and emitter temeperature
   };
 }
-exchange_t filament_heating(body_t &filament, f64 &Pf) {
+exchange_t filament_heating(body_t filament, f64 &Pf) {
   return
-      [&filament, &Pf](system_t &sys) -> void { sys.heats[filament.id] += Pf; };
+      [filament, &Pf](system_t &sys) -> void { sys.heats[filament.id] += Pf; };
 }
 
 // template <u32 n>
@@ -40,8 +40,8 @@ exchange_t filament_heating(body_t &filament, f64 &Pf) {
 //   };
 // }
 
-int main(int argc, char **argv) {
-  system_t system;
+// in the arguments list should passed the optimized parameters and external values
+bool initialise(system_t &system, f64 &Pf) {
 
   body_t filaments[def::n_filamets];
   body_t aluminas[def::n_filamets];
@@ -51,8 +51,6 @@ int main(int argc, char **argv) {
 
   std::vector<body_t> inner_cavity;
   std::vector<body_t> outer_cavity;
-
-  f64 Pf = 50; // Watt
 
   // initialisation filaments and aluminas bodies and exchanges
   for (u32 i = 0; i < def::n_filamets; i++) {
@@ -114,16 +112,6 @@ int main(int argc, char **argv) {
   outer_cavity.push_back(emitter[0]);
   outer_cavity.push_back(emitter[0]);
 
-  if (inner_cavity.size() != def::InnerCavity::n_bodies) {
-    std::cout << "Inner cavity bodies number does not match expected value\n";
-    return 1;
-  }
-
-  if (outer_cavity.size() != def::OuterCavity::n_bodies) {
-    std::cout << "Outer cavity bodies number does not match expected value\n";
-    return 1;
-  }
-
   for (u32 i = 0; i < def::InnerCavity::n_bodies; i++) {
     for (u32 j = i + 1; j < def::InnerCavity::n_bodies; j++) {
       add_exchange(system,
@@ -139,7 +127,14 @@ int main(int argc, char **argv) {
                              def::OuterCavity::equivalent_resistance(i, j)));
     }
   }
+  return true;
+}
 
+
+int main(int argc, char **argv) {
+  system_t system;
+  f64 Pf = 200;
+  initialise(system, Pf);
   /*********************/
   /* SIMULATION CONFIG */
   /*********************/
@@ -153,8 +148,6 @@ int main(int argc, char **argv) {
   /*******************/
   std::cout << "N Bodies: " << system.bodies.size() << "\n";
   std::cout << "N Exchanges: " << system.exchanges.size() << "\n";
-  std::cout << "Inner cavity N Bodies: " << inner_cavity.size() << "\n";
-  std::cout << "Outer cavity N Bodies: " << outer_cavity.size() << "\n";
   std::cout << "Desired dT: " << dT << "K\n";
   std::cout << "Simulation length: " << sim_time << "s\n";
 
