@@ -47,6 +47,7 @@ _CNST_F64 Al2O3 = 30;
 _CNST_F64 Cu = 401;
 _CNST_F64 Fe = 83.5;
 _CNST_F64 Mn = 7.81;
+_CNST_F64 W = 197;
 // Liquid
 _CNST_F64 H2O = 0.5918;
 } // namespace ThermalConductivity
