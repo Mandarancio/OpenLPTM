@@ -2,9 +2,9 @@
 #define _LTM_H__
 
 #include <eigen3/Eigen/Core>
+#include <functional>
 #include <stdint.h>
 #include <vector>
-#include <functional>
 
 // Power 4
 #define _P4_(x) x *x *x *x
@@ -69,8 +69,6 @@ inline void add_exchange(system_t &sys, exchange_t rel) {
 
 // compute the overall thermal exchange of the system.
 inline void evaluate_exchanges(system_t &sys) {
-  // set heats to 0
-  sys.heats.setZero();
   // compute all heat exchange
   for (exchange_t exchange : sys.exchanges) {
     exchange(sys);
@@ -81,7 +79,10 @@ inline void evaluate_exchanges(system_t &sys) {
 inline void evaluate(system_t &sys, f64 dt) {
   evaluate_exchanges(sys);
   // integrate results
-  sys.temperatures += sys.heats.cwiseProduct(sys.inv_capacities) * dt;
+  for (u32 i = 0; i < sys.bodies.size(); i++) {
+    sys.temperatures[i] += sys.heats[i] * sys.inv_capacities[i] * dt;
+    sys.heats[i] = 0;
+  }
 }
 
 /**
@@ -91,8 +92,13 @@ inline void evaluate(system_t &sys, f64 dt) {
 inline void evaluate(system_t &sys, const f64 dT, f64 &dt, f64 min_dt = 0.001,
                      f64 max_dt = 1.0) {
   evaluate_exchanges(sys);
-  Eigen::VectorX<f64> Q = sys.heats.cwiseProduct(sys.inv_capacities);
-  f64 max_Q = Q.cwiseAbs().maxCoeff();
+  f64 max_Q = 0;
+  f64 Qs[sys.bodies.size()];
+  for (u32 i = 0; i < sys.bodies.size(); i++) {
+    Qs[i] = sys.heats[i] * sys.inv_capacities[i];
+    if (std::fabs(Qs[i]) > max_Q)
+      max_Q = std::fabs(Qs[i]);
+  }
   if (max_Q == 0) { // constant case
     dt = max_dt;
     return;
@@ -100,7 +106,10 @@ inline void evaluate(system_t &sys, const f64 dT, f64 &dt, f64 min_dt = 0.001,
   f64 rdt = dT / max_Q;
   dt = (rdt < min_dt ? min_dt : (rdt > max_dt ? max_dt : rdt));
   // integrate results
-  sys.temperatures += Q * dt;
+  for (u32 i = 0; i < sys.bodies.size(); i++) {
+    sys.temperatures[i] += Qs[i] * dt;
+    sys.heats[i] = 0;
+  }
 }
 
 inline void update_parameters(system_t &sys) {
