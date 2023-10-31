@@ -2,9 +2,9 @@
 #define _LTM_H__
 
 #include <eigen3/Eigen/Core>
-#include <ratio>
 #include <stdint.h>
 #include <vector>
+#include <functional>
 
 // Power 4
 #define _P4_(x) x *x *x *x
