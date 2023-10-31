@@ -149,9 +149,9 @@ inline body_t constant_temperature_body(f64 T, f64 conductivity) {
 }
 
 // create a conduction heat exchange relationship between 2 bodies
-inline exchange_t conduction(body_t &b1, body_t &b2, f64 surf_area_b1,
+inline exchange_t conduction(body_t b1, body_t b2, f64 surf_area_b1,
                              f64 surf_area_b2) {
-  return [&b1, &b2, surf_area_b1, surf_area_b2](system_t &sys) -> void {
+  return [b1, b2, surf_area_b1, surf_area_b2](system_t &sys) -> void {
     double T1 = sys.temperatures[b1.id];
     double T2 = sys.temperatures[b2.id];
 
@@ -163,10 +163,10 @@ inline exchange_t conduction(body_t &b1, body_t &b2, f64 surf_area_b1,
 }
 
 // create a radiation heat exchange relationship between 2 bodies
-inline exchange_t radiation(body_t &b1, body_t &b2, f64 correction_factor,
+inline exchange_t radiation(body_t b1, body_t b2, f64 correction_factor,
                             f64 view_factor) {
   const f64 alpha = correction_factor * view_factor * SIGMA;
-  return [&b1, &b2, alpha](system_t &sys) -> void {
+  return [b1, b2, alpha](system_t &sys) -> void {
     double T1 = sys.temperatures[b1.id];
     double T2 = sys.temperatures[b2.id];
     double heat = alpha * (_P4_(T2) - _P4_(T1));
