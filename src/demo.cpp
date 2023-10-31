@@ -7,7 +7,6 @@
 #include <fstream>
 #include <iostream>
 
-
 // formatter to save vector to CSV
 const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision,
                                        Eigen::DontAlignCols, "\n", ", ");
@@ -33,10 +32,8 @@ int main(int argc, char **argv) {
   }
 
   body_t heat_src = constant_temperature_body(180, ThermalConductivity::Cu);
-  body_t body_1 =
-      body(0.05, SpecificHeat::Al, ThermalConductivity::Al, 23);
-  body_t body_2 =
-      body(0.05, SpecificHeat::Cu, ThermalConductivity::Cu, 23);
+  body_t body_1 = body(0.05, SpecificHeat::Al, ThermalConductivity::Al, 23);
+  body_t body_2 = body(0.05, SpecificHeat::Cu, ThermalConductivity::Cu, 23);
   body_t heat_snk = constant_temperature_body(20, ThermalConductivity::Cu);
 
   system_t system;
