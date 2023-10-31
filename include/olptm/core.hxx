@@ -32,31 +32,17 @@ struct body_t {
   u32 id;                        // index in the system
 };
 
-struct exchange_t {
-  body_t *body_1; // body 1 index
-  body_t *body_2; // body 2 index
-  /**
-   * Function used to compute heat exchange.
-   * Parameters:
-   * ----------
-   *  - T1: temperature body 1 (unit: deg C)
-   *  - T2: temperature body 2 (unit: deg C)
-   *  - exc_k: exchange constant (unit: deg C / W)
-   * Returns:
-   * --------
-   * Heat exchanged in W
-   **/
-  std::function<f64(f64 T1, f64 T2, body_t *b1, body_t *b2)> fn;
-};
-
 // Simple system descriptor
 struct system_t {
   Eigen::VectorX<f64> temperatures;   // unit deg C
   Eigen::VectorX<f64> heats;          // unit W
   Eigen::VectorX<f64> inv_capacities; // unit deg C / J
   std::vector<body_t> bodies;         // list of bodies
-  std::vector<exchange_t> exchanges;  // list of heat exchange relations
+  std::vector<std::function<void(system_t &)>>
+      exchanges; // list of heat exchange relations
 };
+
+typedef std::function<void(system_t &)> exchange_t;
 
 template <typename T> inline void insert(Eigen::VectorX<T> &v, T val) {
   u32 size = v.size();
@@ -86,13 +72,8 @@ inline void evaluate_exchanges(system_t &sys) {
   // set heats to 0
   sys.heats.setZero();
   // compute all heat exchange
-  for (exchange_t r : sys.exchanges) {
-    u32 x = r.body_1->id;
-    u32 y = r.body_2->id;
-    f64 heat =
-        r.fn(sys.temperatures[x], sys.temperatures[y], r.body_1, r.body_2);
-    sys.heats[x] += heat;
-    sys.heats[y] -= heat;
+  for (exchange_t exchange : sys.exchanges) {
+    exchange(sys);
   }
 }
 
@@ -170,14 +151,14 @@ inline body_t constant_temperature_body(f64 T, f64 conductivity) {
 // create a conduction heat exchange relationship between 2 bodies
 inline exchange_t conduction(body_t &b1, body_t &b2, f64 surf_area_b1,
                              f64 surf_area_b2) {
-  return {
-      &b1,
-      &b2,
-      [surf_area_b1, surf_area_b2](f64 T1, f64 T2, body_t *b1,
-                                   body_t *b2) -> f64 {
-        return (T2 - T1) / (surf_area_b1 / b1->thermal_conductivy +
-                            surf_area_b2 / b2->thermal_conductivy);
-      },
+  return [&b1, &b2, surf_area_b1, surf_area_b2](system_t &sys) -> void {
+    double T1 = sys.temperatures[b1.id];
+    double T2 = sys.temperatures[b2.id];
+
+    double heat = (T2 - T1) / (surf_area_b1 / b1.thermal_conductivy +
+                               surf_area_b2 / b2.thermal_conductivy);
+    sys.heats[b1.id] += heat;
+    sys.heats[b2.id] -= heat;
   };
 }
 
@@ -185,12 +166,12 @@ inline exchange_t conduction(body_t &b1, body_t &b2, f64 surf_area_b1,
 inline exchange_t radiation(body_t &b1, body_t &b2, f64 correction_factor,
                             f64 view_factor) {
   const f64 alpha = correction_factor * view_factor * SIGMA;
-  return {
-      &b1,
-      &b2,
-      [alpha](f64 T1, f64 T2, body_t *b1, body_t *b2) -> f64 {
-        return alpha * (_P4_(T2) - _P4_(T1));
-      },
+  return [&b1, &b2, alpha](system_t &sys) -> void {
+    double T1 = sys.temperatures[b1.id];
+    double T2 = sys.temperatures[b2.id];
+    double heat = alpha * (_P4_(T2) - _P4_(T1));
+    sys.heats[b1.id] += heat;
+    sys.heats[b2.id] -= heat;
   };
 }
 
