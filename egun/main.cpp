@@ -163,7 +163,7 @@ int main(int argc, char **argv) {
   }
   std::chrono::time_point start = std::chrono::high_resolution_clock::now();
   while (time < sim_time) {
-    evaluate(system, dT, dt, 0.001, 1.0); // dT = 0.1 K
+    evaluate(system, dT, dt, 0.0001, 1.0); // dT = 0.1 K
     time += dt;
     iteration++;
     if (csv_enabled) {
