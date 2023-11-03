@@ -171,6 +171,18 @@ inline exchange_t conduction(body_t b1, body_t b2, f64 surf_area_b1,
   };
 }
 
+// create a conduction heat exchange relationship between 2 bodies
+inline exchange_t conduction(body_t b1, body_t b2, f64 resistance) {
+  return [b1, b2, resistance](system_t &sys) -> void {
+    double T1 = sys.temperatures[b1.id];
+    double T2 = sys.temperatures[b2.id];
+
+    double heat = (T2 - T1) / resistance;
+    sys.heats[b1.id] += heat;
+    sys.heats[b2.id] -= heat;
+  };
+}
+
 // create a radiation heat exchange relationship between 2 bodies
 inline exchange_t radiation(body_t b1, body_t b2, f64 correction_factor,
                             f64 view_factor) {
