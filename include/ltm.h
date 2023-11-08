@@ -42,18 +42,12 @@ ltm_exchange_t *ltm_conduction(ltm_body_t *a, ltm_body_t *b,
 ltm_exchange_t *ltm_radiation(ltm_body_t *a, ltm_body_t *b,
                               f64 thermal_resistance);
 
-typedef struct _ltm_node_ {
-  void *data;
-  struct _ltm_node_ *next;
-} ltm_node_l;
 
-void ltm_list_destroy(ltm_node_l *n);
 
-ltm_node_l *ltm_list_append(ltm_node_l *head, void *data);
 typedef struct {
   const char *label;
-  ltm_node_l *bodies;
-  ltm_node_l *exchanges;
+  ltm_body_t **bodies;
+  ltm_exchange_t **exchanges;
   u32 n_bodies;
   u32 n_exchanges;
 } ltm_system_t;

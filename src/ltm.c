@@ -117,35 +117,6 @@ ltm_exchange_t *ltm_radiation(ltm_body_t *a, ltm_body_t *b,
   exc->destroy = _be_free_;
   return exc;
 }
-void ltm_list_destroy(ltm_node_l *n) {
-  if (n != NULL && n->next != NULL) {
-    ltm_list_destroy(n->next);
-    n->next = NULL;
-  }
-  if (n != NULL)
-    free(n);
-  n = NULL;
-}
-
-void _lst_push_(ltm_node_l *n, ltm_node_l *m) {
-  if (n->next == NULL) {
-    n->next = m;
-  } else {
-    _lst_push_(n->next, m);
-  }
-}
-
-ltm_node_l *ltm_list_append(ltm_node_l *head, void *data) {
-  ltm_node_l *n = malloc(sizeof(ltm_node_l));
-  n->data = data;
-  n->next = NULL;
-  if (head == NULL) {
-    return n;
-  } else {
-    _lst_push_(head, n);
-  }
-  return head;
-}
 
 ltm_system_t *ltm_system(const char *name) {
   ltm_system_t *sys = malloc(sizeof(ltm_system_t));
@@ -158,67 +129,74 @@ ltm_system_t *ltm_system(const char *name) {
 }
 
 void ltm_sys_destroy(ltm_system_t *sys) {
-  ltm_node_l *n;
-  for (n = sys->bodies; n != NULL; n = n->next) {
-    ltm_body_t *b = n->data;
+  u32 i;
+  for (i = 0; i < sys->n_bodies; i++) {
+    ltm_body_t *b = sys->bodies[i];
     b->destroy(b->self);
     free(b);
   }
-  for (n = sys->exchanges; n != NULL; n = n->next) {
-    ltm_exchange_t *e = n->data;
+  for (i = 0; i < sys->n_exchanges; i++) {
+    ltm_exchange_t *e = sys->exchanges[i];
     e->destroy(e->self);
     free(e);
   }
-  ltm_list_destroy(sys->bodies);
-  ltm_list_destroy(sys->exchanges);
+  free(sys->bodies);
+  free(sys->exchanges);
   sys->bodies = NULL;
   sys->exchanges = NULL;
 }
 
+void *_extend_(void *arr, u32 n, size_t size) {
+  if (n == 0) {
+    return malloc(size);
+  }
+  return realloc(arr, (n + 1) * size);
+}
+
 void ltm_sys_add_body(ltm_system_t *sys, ltm_body_t *body) {
-  sys->bodies = ltm_list_append(sys->bodies, body);
-  sys->n_bodies++;
+  sys->bodies = _extend_(sys->bodies, sys->n_bodies, sizeof(ltm_body_t *));
+  sys->bodies[sys->n_bodies++] = body;
 }
 
 void ltm_sys_add_exchange(ltm_system_t *sys, ltm_exchange_t *exch) {
-  sys->exchanges = ltm_list_append(sys->exchanges, exch);
-  sys->n_exchanges++;
+  sys->exchanges =
+      _extend_(sys->exchanges, sys->n_exchanges, sizeof(ltm_exchange_t *));
+  sys->exchanges[sys->n_exchanges++] = exch;
 }
 
 void ltm_sys_evaluate(ltm_system_t *sys, f64 dt) {
-  ltm_node_l *it = sys->exchanges;
-  for (; it != NULL; it = it->next) {
-    ltm_exchange_t *exch = it->data;
+  u32 i;
+  for (i = 0; i < sys->n_exchanges; i++) {
+    ltm_exchange_t *exch = sys->exchanges[i];
     exch->eval(exch->self);
   }
-  it = sys->bodies;
-  for (; it != NULL; it = it->next) {
-    ltm_body_t *body = it->data;
+  for (i = 0; i < sys->n_bodies; i++) {
+    ltm_body_t *body = sys->bodies[i];
     body->update(body->self, dt);
   }
 }
 
 void ltm_sys_print(ltm_system_t *sys) {
-  ltm_node_l *it = sys->bodies;
-  for (; it != NULL; it = it->next) {
-    ltm_body_t *body = it->data;
+  u32 i;
+  for (i = 0; i < sys->n_bodies; i++) {
+    ltm_body_t *body = sys->bodies[i];
     printf(" - %s: %f\n", body->label, body->temperature(body->self));
   }
 }
 
 void ltm_sys_csv_header(ltm_system_t *sys, FILE *fptr) {
-  ltm_node_l *it = sys->bodies;
-  for (; it != NULL; it = it->next) {
-    ltm_body_t *body = it->data;
+  u32 i;
+  for (i = 0; i < sys->n_bodies; i++) {
+    ltm_body_t *body = sys->bodies[i];
     fprintf(fptr, "'%s',", body->label);
   }
   fprintf(fptr, "\n");
 }
 
 void ltm_sys_to_csv(ltm_system_t *sys, FILE *fptr) {
-  ltm_node_l *it = sys->bodies;
-  for (; it != NULL; it = it->next) {
-    ltm_body_t *body = it->data;
+  u32 i;
+  for (i = 0; i < sys->n_bodies; i++) {
+    ltm_body_t *body = sys->bodies[i];
     fprintf(fptr, "%f,", body->temperature(body->self));
   }
   fprintf(fptr, "\n");
@@ -227,9 +205,9 @@ void ltm_sys_to_csv(ltm_system_t *sys, FILE *fptr) {
 FILE *ltm_sys_bin_file(ltm_system_t *sys, const char *fname) {
   FILE *f = fopen(fname, "wb");
   fwrite(&sys->n_bodies, sizeof(u32), 1, f);
-  ltm_node_l *it;
-  for (it = sys->bodies; it != NULL; it = it->next) {
-    ltm_body_t *b = it->data;
+  u32 i;
+  for (i = 0; i < sys->n_bodies; i++) {
+    ltm_body_t *b = sys->bodies[i];
     u32 len = strlen(b->label);
     fwrite(&len, sizeof(u32), 1, f);
     fwrite(b->label, len, 1, f);
@@ -238,9 +216,9 @@ FILE *ltm_sys_bin_file(ltm_system_t *sys, const char *fname) {
 }
 void ltm_sys_to_bin(ltm_system_t *sys, FILE *fptr) {
   u8 end[2] = {0, 0};
-  ltm_node_l *it = sys->bodies;
-  for (; it != NULL; it = it->next) {
-    ltm_body_t *body = it->data;
+  u32 i;
+  for (i = 0; i < sys->n_bodies; i++) {
+    ltm_body_t *body = sys->bodies[i];
     f64 t = body->temperature(body->self);
     fwrite(&t, sizeof(f64), 1, fptr);
   }
