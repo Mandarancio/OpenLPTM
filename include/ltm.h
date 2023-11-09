@@ -18,6 +18,7 @@ typedef struct ltm_body_t {
   void (*update)(struct ltm_body_t *, f64);
   void (*add_heat)(struct ltm_body_t *, f64);
   f64 (*temperature)(struct ltm_body_t *);
+  f64 (*temperature4)(struct ltm_body_t *);
   f64 (*heat)(struct ltm_body_t *);
   void (*destroy)(struct ltm_body_t *);
 } ltm_body_t;
@@ -26,6 +27,7 @@ ltm_body_t *ltm_body(const char *label, void *payload,
                      void (*update)(struct ltm_body_t *, f64),
                      void (*add_heat)(struct ltm_body_t *, f64),
                      f64 (*temperature)(struct ltm_body_t *),
+                     f64 (*temperature4)(struct ltm_body_t *),
                      f64 (*heat)(struct ltm_body_t *),
                      void (*destroy)(struct ltm_body_t *));
 
