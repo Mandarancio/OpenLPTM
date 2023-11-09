@@ -13,7 +13,7 @@ typedef double f64;
 typedef float f32;
 
 typedef struct {
-  const char *label;
+  char label[256];
   void *self;
   void (*update)(void *, f64);
   void (*add_heat)(void *, f64);
@@ -45,7 +45,7 @@ ltm_exchange_t *ltm_radiation(ltm_body_t *a, ltm_body_t *b,
 
 
 typedef struct {
-  const char *label;
+  char label[256];
   ltm_body_t **bodies;
   ltm_exchange_t **exchanges;
   u32 n_bodies;

@@ -37,7 +37,7 @@ ltm_body_t *ltm_body(const char *label, void *payload,
                      void (*destroy)(void *)) {
 
   ltm_body_t *body = malloc(sizeof(ltm_body_t));
-  body->label = label;
+  strcpy(body->label, label);
   body->self = payload;
   body->update = update;
   body->add_heat = add_heat;
@@ -120,7 +120,7 @@ ltm_exchange_t *ltm_radiation(ltm_body_t *a, ltm_body_t *b,
 
 ltm_system_t *ltm_system(const char *name) {
   ltm_system_t *sys = malloc(sizeof(ltm_system_t));
-  sys->label = name;
+  strcpy(sys->label, name);
   sys->bodies = NULL;
   sys->exchanges = NULL;
   sys->n_bodies = 0u;
