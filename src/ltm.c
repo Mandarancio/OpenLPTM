@@ -71,6 +71,15 @@ ltm_body_t *ltm_dyn_body(const char *label, f64 T0, f64 mass, f64 spec_heat) {
   return ltm_body(label, payload, _b_updt_, _b_aheat_, _b_temp_, _b_temp4_,
                   _b_heat_, _b_free_);
 }
+ltm_body_t *ltm_capacity_body(const char *label, f64 T0, f64 capacity) {
+  _ltm_body_t *payload = (_ltm_body_t *)malloc(sizeof(_ltm_body_t));
+  payload->T = T0;
+  payload->T4 = T0 * T0 * T0 * T0;
+  payload->H = 0;
+  payload->iC = 1. / capacity;
+  return ltm_body(label, payload, _b_updt_, _b_aheat_, _b_temp_, _b_temp4_,
+                  _b_heat_, _b_free_);
+}
 
 ltm_body_t *ltm_const_body(const char *label, f64 T0) {
   _ltm_body_t *payload = (_ltm_body_t *)malloc(sizeof(_ltm_body_t));

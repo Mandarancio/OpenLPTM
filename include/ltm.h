@@ -33,6 +33,8 @@ ltm_body_t *ltm_body(const char *label, void *payload,
 
 ltm_body_t *ltm_dyn_body(const char *label, f64 T0, f64 mass, f64 spec_heat);
 
+ltm_body_t *ltm_capacity_body(const char *label, f64 T0, f64 capacity);
+
 ltm_body_t *ltm_const_body(const char *label, f64 T0);
 
 typedef struct ltm_exchange_t {
