@@ -3,8 +3,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Stefan-Boltzman constant (W m-2 K-4)
+#define sigmaSB 5.670374419e-8
+
 typedef struct {
   f64 T;
+  f64 T4;
   f64 H;
   f64 iC;
 } _ltm_body_t;
@@ -12,6 +16,7 @@ typedef struct {
 void _b_updt_(struct ltm_body_t *self, f64 dt) {
   _ltm_body_t *b = self->self;
   b->T += b->H * b->iC * dt;
+  b->T4 = b->T * b->T * b->T * b->T;
   b->H = 0;
 };
 
@@ -26,6 +31,10 @@ void _b_aheat_(struct ltm_body_t *self, f64 dH) {
 
 f64 _b_temp_(struct ltm_body_t *self) { return ((_ltm_body_t *)self->self)->T; }
 
+f64 _b_temp4_(struct ltm_body_t *self) {
+  return ((_ltm_body_t *)self->self)->T4;
+}
+
 f64 _b_heat_(struct ltm_body_t *self) { return ((_ltm_body_t *)self->self)->H; }
 
 void _b_free_(struct ltm_body_t *self) {
@@ -37,6 +46,7 @@ ltm_body_t *ltm_body(const char *label, void *payload,
                      void (*update)(struct ltm_body_t *, f64),
                      void (*add_heat)(struct ltm_body_t *, f64),
                      f64 (*temperature)(struct ltm_body_t *),
+                     f64 (*temperature4)(struct ltm_body_t *),
                      f64 (*heat)(struct ltm_body_t *),
                      void (*destroy)(struct ltm_body_t *)) {
 
@@ -46,6 +56,7 @@ ltm_body_t *ltm_body(const char *label, void *payload,
   body->update = update;
   body->add_heat = add_heat;
   body->temperature = temperature;
+  body->temperature4 = temperature4;
   body->heat = heat;
   body->destroy = destroy;
   return body;
@@ -54,19 +65,21 @@ ltm_body_t *ltm_body(const char *label, void *payload,
 ltm_body_t *ltm_dyn_body(const char *label, f64 T0, f64 mass, f64 spec_heat) {
   _ltm_body_t *payload = (_ltm_body_t *)malloc(sizeof(_ltm_body_t));
   payload->T = T0;
+  payload->T4 = T0 * T0 * T0 * T0;
   payload->H = 0;
   payload->iC = 1. / (mass * spec_heat);
-  return ltm_body(label, payload, _b_updt_, _b_aheat_, _b_temp_, _b_heat_,
-                  _b_free_);
+  return ltm_body(label, payload, _b_updt_, _b_aheat_, _b_temp_, _b_temp4_,
+                  _b_heat_, _b_free_);
 }
 
 ltm_body_t *ltm_const_body(const char *label, f64 T0) {
   _ltm_body_t *payload = (_ltm_body_t *)malloc(sizeof(_ltm_body_t));
   payload->T = T0;
+  payload->T4 = T0 * T0 * T0 * T0;
   payload->H = 0;
   payload->iC = 0;
-  return ltm_body(label, payload, _b_const_, _b_aheat_, _b_temp_, _b_heat_,
-                  _b_free_);
+  return ltm_body(label, payload, _b_const_, _b_aheat_, _b_temp_, _b_temp4_,
+                  _b_heat_, _b_free_);
 }
 
 typedef struct {
@@ -82,16 +95,15 @@ void _be_free_(struct ltm_exchange_t *self) {
 
 void _be_cond_(struct ltm_exchange_t *self) {
   _ltm_binary_exc_t *e = (_ltm_binary_exc_t *)self->self;
-  f64 dh =
-      e->R * (e->a->temperature(e->a) - e->b->temperature(e->b));
+  f64 dh = (e->a->temperature(e->a) - e->b->temperature(e->b)) / e->R;
   e->a->add_heat(e->a, -dh);
   e->b->add_heat(e->b, dh);
 }
 
 void _be_rad_(struct ltm_exchange_t *self) {
   _ltm_binary_exc_t *e = (_ltm_binary_exc_t *)self->self;
-  f64 dh = e->R * (pow(e->a->temperature(e->a), 4) -
-                   pow(e->b->temperature(e->b), 4));
+  f64 dh =
+      sigmaSB * (e->a->temperature4(e->a) - e->b->temperature4(e->b)) / e->R;
   e->a->add_heat(e->a, -dh);
   e->b->add_heat(e->b, dh);
 }
@@ -192,7 +204,7 @@ void ltm_sys_csv_header(ltm_system_t *sys, FILE *fptr) {
   u32 i;
   for (i = 0; i < sys->n_bodies; i++) {
     ltm_body_t *body = sys->bodies[i];
-    fprintf(fptr, "'%s',", body->label);
+    fprintf(fptr, "'%s', ", body->label);
   }
   fprintf(fptr, "\n");
 }
@@ -201,7 +213,7 @@ void ltm_sys_to_csv(ltm_system_t *sys, FILE *fptr) {
   u32 i;
   for (i = 0; i < sys->n_bodies; i++) {
     ltm_body_t *body = sys->bodies[i];
-    fprintf(fptr, "%f,", body->temperature(body));
+    fprintf(fptr, "%f, ", body->temperature(body));
   }
   fprintf(fptr, "\n");
 }
