@@ -9,32 +9,36 @@ typedef struct {
   f64 iC;
 } _ltm_body_t;
 
-void _b_updt_(void *self, f64 dt) {
-  _ltm_body_t *b = self;
+void _b_updt_(struct ltm_body_t *self, f64 dt) {
+  _ltm_body_t *b = self->self;
   b->T += b->H * b->iC * dt;
   b->H = 0;
 };
 
-void _b_const_(void *self, f64 dt) { ((_ltm_body_t *)self)->H = 0; }
+void _b_const_(struct ltm_body_t *self, f64 dt) {
+  ((_ltm_body_t *)self->self)->H = 0;
+}
 
-void _b_aheat_(void *self, f64 dH) {
-  _ltm_body_t *b = self;
+void _b_aheat_(struct ltm_body_t *self, f64 dH) {
+  _ltm_body_t *b = self->self;
   b->H += dH;
 }
 
-f64 _b_temp_(void *self) { return ((_ltm_body_t *)self)->T; }
+f64 _b_temp_(struct ltm_body_t *self) { return ((_ltm_body_t *)self->self)->T; }
 
-f64 _b_heat_(void *self) { return ((_ltm_body_t *)self)->H; }
+f64 _b_heat_(struct ltm_body_t *self) { return ((_ltm_body_t *)self->self)->H; }
 
-void _b_free_(void *self) {
-  _ltm_body_t *b = (_ltm_body_t *)self;
+void _b_free_(struct ltm_body_t *self) {
+  _ltm_body_t *b = (_ltm_body_t *)self->self;
   free(b);
 }
 
 ltm_body_t *ltm_body(const char *label, void *payload,
-                     void (*update)(void *, f64), void (*add_heat)(void *, f64),
-                     f64 (*temperature)(void *), f64 (*heat)(void *),
-                     void (*destroy)(void *)) {
+                     void (*update)(struct ltm_body_t *, f64),
+                     void (*add_heat)(struct ltm_body_t *, f64),
+                     f64 (*temperature)(struct ltm_body_t *),
+                     f64 (*heat)(struct ltm_body_t *),
+                     void (*destroy)(struct ltm_body_t *)) {
 
   ltm_body_t *body = malloc(sizeof(ltm_body_t));
   strcpy(body->label, label);
@@ -71,25 +75,25 @@ typedef struct {
   f64 R;
 } _ltm_binary_exc_t;
 
-void _be_free_(void *self) {
-  _ltm_binary_exc_t *e = (_ltm_binary_exc_t *)self;
+void _be_free_(struct ltm_exchange_t *self) {
+  _ltm_binary_exc_t *e = (_ltm_binary_exc_t *)self->self;
   free(e);
 }
 
-void _be_cond_(void *self) {
-  _ltm_binary_exc_t *e = (_ltm_binary_exc_t *)self;
+void _be_cond_(struct ltm_exchange_t *self) {
+  _ltm_binary_exc_t *e = (_ltm_binary_exc_t *)self->self;
   f64 dh =
-      e->R * (e->a->temperature(e->a->self) - e->b->temperature(e->b->self));
-  e->a->add_heat(e->a->self, -dh);
-  e->b->add_heat(e->b->self, dh);
+      e->R * (e->a->temperature(e->a) - e->b->temperature(e->b));
+  e->a->add_heat(e->a, -dh);
+  e->b->add_heat(e->b, dh);
 }
 
-void _be_rad_(void *self) {
-  _ltm_binary_exc_t *e = (_ltm_binary_exc_t *)self;
-  f64 dh = e->R * (pow(e->a->temperature(e->a->self), 4) -
-                   pow(e->b->temperature(e->b->self), 4));
-  e->a->add_heat(e->a->self, -dh);
-  e->b->add_heat(e->b->self, dh);
+void _be_rad_(struct ltm_exchange_t *self) {
+  _ltm_binary_exc_t *e = (_ltm_binary_exc_t *)self->self;
+  f64 dh = e->R * (pow(e->a->temperature(e->a), 4) -
+                   pow(e->b->temperature(e->b), 4));
+  e->a->add_heat(e->a, -dh);
+  e->b->add_heat(e->b, dh);
 }
 
 ltm_exchange_t *ltm_conduction(ltm_body_t *a, ltm_body_t *b,
@@ -132,12 +136,12 @@ void ltm_sys_destroy(ltm_system_t *sys) {
   u32 i;
   for (i = 0; i < sys->n_bodies; i++) {
     ltm_body_t *b = sys->bodies[i];
-    b->destroy(b->self);
+    b->destroy(b);
     free(b);
   }
   for (i = 0; i < sys->n_exchanges; i++) {
     ltm_exchange_t *e = sys->exchanges[i];
-    e->destroy(e->self);
+    e->destroy(e);
     free(e);
   }
   free(sys->bodies);
@@ -168,11 +172,11 @@ void ltm_sys_evaluate(ltm_system_t *sys, f64 dt) {
   u32 i;
   for (i = 0; i < sys->n_exchanges; i++) {
     ltm_exchange_t *exch = sys->exchanges[i];
-    exch->eval(exch->self);
+    exch->eval(exch);
   }
   for (i = 0; i < sys->n_bodies; i++) {
     ltm_body_t *body = sys->bodies[i];
-    body->update(body->self, dt);
+    body->update(body, dt);
   }
 }
 
@@ -197,7 +201,7 @@ void ltm_sys_to_csv(ltm_system_t *sys, FILE *fptr) {
   u32 i;
   for (i = 0; i < sys->n_bodies; i++) {
     ltm_body_t *body = sys->bodies[i];
-    fprintf(fptr, "%f,", body->temperature(body->self));
+    fprintf(fptr, "%f,", body->temperature(body));
   }
   fprintf(fptr, "\n");
 }
@@ -219,7 +223,7 @@ void ltm_sys_to_bin(ltm_system_t *sys, FILE *fptr) {
   u32 i;
   for (i = 0; i < sys->n_bodies; i++) {
     ltm_body_t *body = sys->bodies[i];
-    f64 t = body->temperature(body->self);
+    f64 t = body->temperature(body);
     fwrite(&t, sizeof(f64), 1, fptr);
   }
   fwrite(&end, 2, 1, fptr);
