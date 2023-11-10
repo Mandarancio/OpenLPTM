@@ -205,7 +205,7 @@ void ltm_sys_print(ltm_system_t *sys) {
   u32 i;
   for (i = 0; i < sys->n_bodies; i++) {
     ltm_body_t *body = sys->bodies[i];
-    printf(" - %s: %f\n", body->label, body->temperature(body->self));
+    printf(" - %s: %f\n", body->label, body->temperature(body));
   }
 }
 
