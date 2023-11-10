@@ -213,7 +213,7 @@ void ltm_sys_csv_header(ltm_system_t *sys, FILE *fptr) {
   u32 i;
   for (i = 0; i < sys->n_bodies; i++) {
     ltm_body_t *body = sys->bodies[i];
-    fprintf(fptr, "'%s', ", body->label);
+    fprintf(fptr, "\"%s\",", body->label);
   }
   fprintf(fptr, "\n");
 }
@@ -222,7 +222,7 @@ void ltm_sys_to_csv(ltm_system_t *sys, FILE *fptr) {
   u32 i;
   for (i = 0; i < sys->n_bodies; i++) {
     ltm_body_t *body = sys->bodies[i];
-    fprintf(fptr, "%f, ", body->temperature(body));
+    fprintf(fptr, "%f,", body->temperature(body));
   }
   fprintf(fptr, "\n");
 }
