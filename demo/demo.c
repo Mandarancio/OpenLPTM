@@ -20,10 +20,10 @@ int main(int argc, char **argv) {
     }
   }
 
-  ltm_body_t *a = ltm_dyn_body("Body A", 270, 0.5, 400);
-  ltm_body_t *b = ltm_dyn_body("Body B", 600, 0.5, 800.);
+  ltm_body_t *a = ltm_dyn_body("Body A", 1, 270, 0.5, 400);
+  ltm_body_t *b = ltm_dyn_body("Body B", 1, 600, 0.5, 800.);
 
-  ltm_exchange_t *exch = ltm_conduction(a, b, 1.4);
+  ltm_exchange_t *exch = ltm_conduction("conduction", a, b, 1.4);
 
   ltm_system_t *sys = ltm_system("demo");
   ltm_sys_add_body(sys, a);

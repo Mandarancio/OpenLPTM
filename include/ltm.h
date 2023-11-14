@@ -17,6 +17,7 @@ typedef float f32;
  **/
 typedef struct ltm_body_t {
   char label[256]; // name of the object
+  f64 emissivity;  // body emissivity
   void *self;      // internal payload
   void (*update)(struct ltm_body_t *,
                  f64); // update temperature using current heat
@@ -31,7 +32,7 @@ typedef struct ltm_body_t {
 /**
  * Generic constructor
  **/
-ltm_body_t *ltm_body(const char *label, void *payload,
+ltm_body_t *ltm_body(const char *label, f64 emissivity, void *payload,
                      void (*update)(struct ltm_body_t *, f64),
                      void (*add_heat)(struct ltm_body_t *, f64),
                      f64 (*temperature)(struct ltm_body_t *),
@@ -43,23 +44,26 @@ ltm_body_t *ltm_body(const char *label, void *payload,
  * Constructor for a dynamic body with a given initial temperature, mass and
  * specific heat
  **/
-ltm_body_t *ltm_dyn_body(const char *label, f64 T0, f64 mass, f64 spec_heat);
+ltm_body_t *ltm_dyn_body(const char *label, f64 emissivity, f64 T0, f64 mass,
+                         f64 spec_heat);
 
 /**
  * Constructor for a dynamic body with a given initial temperature and
  * equivalent thermal capacity
  **/
-ltm_body_t *ltm_capacity_body(const char *label, f64 T0, f64 capacity);
+ltm_body_t *ltm_capacity_body(const char *label, f64 emissivity, f64 T0,
+                              f64 capacity);
 
 /**
  * Constructor for a constant temperature body with a given temperature
  **/
-ltm_body_t *ltm_const_body(const char *label, f64 T0);
+ltm_body_t *ltm_const_body(const char *label, f64 emissivity, f64 T0);
 
 /**
  * Generic thermal exchange structure.
  **/
 typedef struct ltm_exchange_t {
+  char label[256];                          // label
   void *self;                               // internal data
   void (*eval)(struct ltm_exchange_t *);    // evaluate exchange
   void (*destroy)(struct ltm_exchange_t *); // destructor
@@ -69,13 +73,13 @@ typedef struct ltm_exchange_t {
  * Constructor for a conduction thermal exchange between to given bodies and
  * with a given equivalent thermal resistance.
  **/
-ltm_exchange_t *ltm_conduction(ltm_body_t *a, ltm_body_t *b,
+ltm_exchange_t *ltm_conduction(const char *label, ltm_body_t *a, ltm_body_t *b,
                                f64 thermal_resistance);
 /**
  * Constructor for a radiation thermal exchange between to given bodies and
  * with a given equivalent thermal resistance.
  **/
-ltm_exchange_t *ltm_radiation(ltm_body_t *a, ltm_body_t *b,
+ltm_exchange_t *ltm_radiation(const char *label, ltm_body_t *a, ltm_body_t *b,
                               f64 thermal_resistance);
 
 /**
@@ -103,9 +107,17 @@ void ltm_sys_destroy(ltm_system_t *sys);
  **/
 void ltm_sys_add_body(ltm_system_t *sys, ltm_body_t *body);
 /**
+ * Get body by name
+ **/
+ltm_body_t *ltm_sys_get_body(ltm_system_t *sys, const char *label);
+/**
  * Add an exchange to a system
  **/
 void ltm_sys_add_exchange(ltm_system_t *sys, ltm_exchange_t *exch);
+/**
+ * Get exchange by name
+ **/
+ltm_exchange_t *ltm_sys_get_exchange(ltm_system_t *sys, const char *label);
 /**
  * Evaluate system for a given time interval dt
  **/

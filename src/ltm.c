@@ -42,7 +42,7 @@ void _b_free_(struct ltm_body_t *self) {
   free(b);
 }
 
-ltm_body_t *ltm_body(const char *label, void *payload,
+ltm_body_t *ltm_body(const char *label, f64 em, void *payload,
                      void (*update)(struct ltm_body_t *, f64),
                      void (*add_heat)(struct ltm_body_t *, f64),
                      f64 (*temperature)(struct ltm_body_t *),
@@ -52,6 +52,7 @@ ltm_body_t *ltm_body(const char *label, void *payload,
 
   ltm_body_t *body = malloc(sizeof(ltm_body_t));
   strcpy(body->label, label);
+  body->emissivity = em;
   body->self = payload;
   body->update = update;
   body->add_heat = add_heat;
@@ -62,32 +63,34 @@ ltm_body_t *ltm_body(const char *label, void *payload,
   return body;
 }
 
-ltm_body_t *ltm_dyn_body(const char *label, f64 T0, f64 mass, f64 spec_heat) {
+ltm_body_t *ltm_dyn_body(const char *label, f64 em, f64 T0, f64 mass,
+                         f64 spec_heat) {
   _ltm_body_t *payload = (_ltm_body_t *)malloc(sizeof(_ltm_body_t));
   payload->T = T0;
   payload->T4 = T0 * T0 * T0 * T0;
   payload->H = 0;
   payload->iC = 1. / (mass * spec_heat);
-  return ltm_body(label, payload, _b_updt_, _b_aheat_, _b_temp_, _b_temp4_,
+  return ltm_body(label, em, payload, _b_updt_, _b_aheat_, _b_temp_, _b_temp4_,
                   _b_heat_, _b_free_);
 }
-ltm_body_t *ltm_capacity_body(const char *label, f64 T0, f64 capacity) {
+
+ltm_body_t *ltm_capacity_body(const char *label, f64 em, f64 T0, f64 capacity) {
   _ltm_body_t *payload = (_ltm_body_t *)malloc(sizeof(_ltm_body_t));
   payload->T = T0;
   payload->T4 = T0 * T0 * T0 * T0;
   payload->H = 0;
   payload->iC = 1. / capacity;
-  return ltm_body(label, payload, _b_updt_, _b_aheat_, _b_temp_, _b_temp4_,
+  return ltm_body(label, em, payload, _b_updt_, _b_aheat_, _b_temp_, _b_temp4_,
                   _b_heat_, _b_free_);
 }
 
-ltm_body_t *ltm_const_body(const char *label, f64 T0) {
+ltm_body_t *ltm_const_body(const char *label, f64 em, f64 T0) {
   _ltm_body_t *payload = (_ltm_body_t *)malloc(sizeof(_ltm_body_t));
   payload->T = T0;
   payload->T4 = T0 * T0 * T0 * T0;
   payload->H = 0;
   payload->iC = 0;
-  return ltm_body(label, payload, _b_const_, _b_aheat_, _b_temp_, _b_temp4_,
+  return ltm_body(label, em, payload, _b_const_, _b_aheat_, _b_temp_, _b_temp4_,
                   _b_heat_, _b_free_);
 }
 
@@ -117,26 +120,28 @@ void _be_rad_(struct ltm_exchange_t *self) {
   e->b->add_heat(e->b, dh);
 }
 
-ltm_exchange_t *ltm_conduction(ltm_body_t *a, ltm_body_t *b,
+ltm_exchange_t *ltm_conduction(const char *label, ltm_body_t *a, ltm_body_t *b,
                                f64 thermal_resistance) {
   _ltm_binary_exc_t *self = malloc(sizeof(_ltm_binary_exc_t));
   self->a = a;
   self->b = b;
   self->R = thermal_resistance;
   ltm_exchange_t *exc = malloc(sizeof(ltm_exchange_t));
+  strcpy(exc->label, label);
   exc->self = self;
   exc->eval = _be_cond_;
   exc->destroy = _be_free_;
   return exc;
 }
 
-ltm_exchange_t *ltm_radiation(ltm_body_t *a, ltm_body_t *b,
+ltm_exchange_t *ltm_radiation(const char *label, ltm_body_t *a, ltm_body_t *b,
                               f64 thermal_resistance) {
   _ltm_binary_exc_t *self = malloc(sizeof(_ltm_binary_exc_t));
   self->a = a;
   self->b = b;
   self->R = thermal_resistance;
   ltm_exchange_t *exc = malloc(sizeof(ltm_exchange_t));
+  strcpy(exc->label, label);
   exc->self = self;
   exc->eval = _be_rad_;
   exc->destroy = _be_free_;
@@ -187,6 +192,24 @@ void ltm_sys_add_exchange(ltm_system_t *sys, ltm_exchange_t *exch) {
   sys->exchanges =
       _extend_(sys->exchanges, sys->n_exchanges, sizeof(ltm_exchange_t *));
   sys->exchanges[sys->n_exchanges++] = exch;
+}
+
+ltm_body_t *ltm_sys_get_body(ltm_system_t *sys, const char *label) {
+  u32 i;
+  for (i = 0; i < sys->n_bodies; i++) {
+    if (strcmp(sys->bodies[i]->label, label) == 0)
+      return sys->bodies[i];
+  }
+  return 0;
+}
+
+ltm_exchange_t *ltm_sys_get_exchange(ltm_system_t *sys, const char *label) {
+  u32 i;
+  for (i = 0; i < sys->n_exchanges; i++) {
+    if (strcmp(sys->exchanges[i]->label, label) == 0)
+      return sys->exchanges[i];
+  }
+  return 0;
 }
 
 void ltm_sys_evaluate(ltm_system_t *sys, f64 dt) {
